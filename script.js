@@ -1494,7 +1494,7 @@ class GalleryApp {
             if (hasSamplePhotos) {
                 setTimeout(() => {
                     UIHelper.showToast(
-                        'Galeria carregada com fotos de exemplo. Faça upload de suas próprias fotos!',
+                        'Galeria carregada. Faça upload de novas fotos!',
                         'info',
                         4000
                     );
