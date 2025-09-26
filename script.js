@@ -7,20 +7,80 @@ class PhotoManager {
         this.currentFilteredPhotos = [];
         this.categories = ['Viagens', 'Família', 'Natureza', 'Eventos', 'Trabalho'];
         this.loadPhotos();
+
+        // Adicionar fotos de exemplo se estiver vazio
+        if (!localStorage.getItem('photos') || JSON.parse(localStorage.getItem('photos')).length === 0) {
+            this.addSamplePhotos();
+        }
     }
 
+    // Adicione este método para carregar fotos de exemplo
+    addSamplePhotos() {
+        // Lista de arquivos reais do diretório img/samples
+        const realPhotos = [
+            {
+                name: "20240622_201519.jpg",
+                title: "Pôr do Sol na Praia",
+                tags: ["praia", "sol"],
+                category: "Viagens",
+                favorite: false
+            },
+            {
+                name: "20241020_193623.jpg",
+                title: "Evento Familiar",
+                tags: ["família", "evento"],
+                category: "Família",
+                favorite: true
+            },
+            {
+                name: "IMG-20231111-WA0009.jpg",
+                title: "Flores do Campo",
+                tags: ["flores", "campo"],
+                category: "Natureza",
+                favorite: false
+            },
+            {
+                name: "IMG-20240205-WA0009.jpg",
+                title: "Viagem à Cidade",
+                tags: ["cidade", "viagem"],
+                category: "Viagens",
+                favorite: false
+            }
+        ];
+
+        // Gerar objetos de foto para a galeria
+        const samplePhotos = realPhotos.map((info, idx) => ({
+            id: Date.now() + idx,
+            name: info.name,
+            type: "image/jpeg",
+            size: 0,
+            dataURL: `img/samples/${info.name}`,
+            thumbnailURL: `img/samples/${info.name}`,
+            uploadDate: new Date(Date.now() - idx * 86400000).toISOString(),
+            title: info.title,
+            tags: info.tags,
+            category: info.category,
+            favorite: info.favorite,
+            metadata: { width: 0, height: 0, aspectRatio: 1.78 }
+        }));
+
+        this.photos = samplePhotos;
+        this.savePhotos();
+    }
+
+    // Modifique o método loadPhotos para verificar se as fotos de exemplo precisam ser carregadas
     loadPhotos() {
         const storedPhotos = localStorage.getItem('photos');
         const storedCategories = localStorage.getItem('categories');
-        
+
         if (storedPhotos) {
             this.photos = JSON.parse(storedPhotos);
         }
-        
+
         if (storedCategories) {
             this.categories = JSON.parse(storedCategories);
         }
-        
+
         this.updateCategoriesSelect();
         return this.photos;
     }
@@ -49,7 +109,7 @@ class PhotoManager {
                 aspectRatio: photoData.metadata?.aspectRatio || 0
             }
         };
-        
+
         this.photos.unshift(newPhoto);
         this.savePhotos();
         return newPhoto;
@@ -104,7 +164,7 @@ class PhotoManager {
         if (categorySelect) {
             // Salvar valor atual
             const currentValue = categorySelect.value;
-            
+
             // Limpar e reconstruir opções
             categorySelect.innerHTML = '<option value="">Sem categoria</option>';
             this.categories.forEach(category => {
@@ -113,7 +173,7 @@ class PhotoManager {
                 option.textContent = category;
                 categorySelect.appendChild(option);
             });
-            
+
             // Restaurar valor se ainda existir
             if (this.categories.includes(currentValue)) {
                 categorySelect.value = currentValue;
@@ -134,19 +194,19 @@ class PhotoManager {
     importGallery(jsonData) {
         try {
             const data = JSON.parse(jsonData);
-            
+
             if (data.photos && Array.isArray(data.photos)) {
                 // Validar cada foto
-                const validPhotos = data.photos.filter(photo => 
+                const validPhotos = data.photos.filter(photo =>
                     photo.id && photo.dataURL && photo.thumbnailURL
                 );
-                
+
                 this.photos = validPhotos;
-                
+
                 if (data.categories && Array.isArray(data.categories)) {
                     this.categories = [...new Set([...this.categories, ...data.categories])];
                 }
-                
+
                 this.savePhotos();
                 return true;
             }
@@ -189,11 +249,11 @@ class LightboxManager {
         this.cancelEditButton = document.getElementById('cancel-edit-button');
         this.editButton = document.getElementById('edit-button');
         this.zoomButton = document.getElementById('lightbox-zoom');
-        
+
         this.originalTitle = '';
         this.originalTags = '';
         this.isEditing = false;
-        
+
         // REMOVER botão de zoom da interface
         if (this.zoomButton) {
             this.zoomButton.style.display = 'none';
@@ -211,7 +271,7 @@ class LightboxManager {
         this.cancelEditButton.addEventListener('click', () => this.cancelEdits());
         this.toggleFavorite.addEventListener('click', () => this.toggleFavoriteCurrent());
         this.editButton.addEventListener('click', () => this.toggleEditMode());
-        
+
         // Zoom com clique na imagem (substitui o botão)
         this.lightboxImage.addEventListener('click', (e) => {
             if (this.isZoomed) {
@@ -220,15 +280,15 @@ class LightboxManager {
                 this.zoomImage(e);
             }
         });
-        
+
         // Teclado
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
-        
+
         // Fechar ao clicar fora
         this.lightbox.addEventListener('click', (e) => {
             if (e.target === this.lightbox) this.close();
         });
-        
+
         // Navegação por gestos (touch)
         this.setupTouchGestures();
     }
@@ -236,22 +296,22 @@ class LightboxManager {
     setupTouchGestures() {
         let startX = 0;
         let startY = 0;
-        
+
         this.lightboxImage.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
             }
         });
-        
+
         this.lightboxImage.addEventListener('touchend', (e) => {
             if (!this.isZoomed && e.changedTouches.length === 1) {
                 const endX = e.changedTouches[0].clientX;
                 const endY = e.changedTouches[0].clientY;
-                
+
                 const diffX = startX - endX;
                 const diffY = startY - endY;
-                
+
                 // Se foi um swipe horizontal (e não vertical)
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
                     if (diffX > 0) {
@@ -265,23 +325,23 @@ class LightboxManager {
     }
 
     open(photoId, filteredPhotos = []) {
-        const index = filteredPhotos.length > 0 
+        const index = filteredPhotos.length > 0
             ? filteredPhotos.findIndex(p => p.id == photoId)
             : this.photoManager.photos.findIndex(p => p.id == photoId);
-            
+
         if (index === -1) return;
-        
+
         this.currentIndex = index;
         this.currentFilteredPhotos = filteredPhotos.length > 0 ? filteredPhotos : this.photoManager.photos;
         this.isOpen = true;
         this.rotation = 0;
         this.isZoomed = false;
-        
+
         this.updateLightbox();
         this.lightbox.style.display = 'flex';
         this.lightbox.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');
-        
+
         // Mostrar dica de teclado temporariamente
         this.showKeyboardHint();
     }
@@ -295,7 +355,7 @@ class LightboxManager {
         this.isZoomed = false;
         this.lightboxImage.style.transform = 'rotate(0deg)';
         this.lightboxImage.classList.remove('zoomed');
-        
+
         if (this.isEditing) {
             this.cancelEdits();
         }
@@ -312,31 +372,31 @@ class LightboxManager {
     updateLightbox() {
         const photo = this.currentFilteredPhotos[this.currentIndex];
         if (!photo) return;
-        
-        this.lightboxImage.src = photo.dataURL;
+
+        this.lightboxImage.src = photo.dataURL.startsWith('data:') ? photo.dataURL : photo.dataURL;
         this.lightboxImage.alt = photo.title || photo.name;
         this.lightboxTitle.textContent = photo.title || 'Sem Título';
         this.lightboxFilename.textContent = `Arquivo: ${photo.name}`;
         this.lightboxDate.textContent = `Upload: ${new Date(photo.uploadDate).toLocaleString('pt-BR')}`;
         this.lightboxSize.textContent = `Tamanho: ${this.formatFileSize(photo.size)}`;
         this.lightboxTags.textContent = photo.tags.join(', ') || 'Nenhuma tag';
-        
+
         // Atualizar favorito
         this.toggleFavorite.textContent = photo.favorite ? '★' : '☆';
         this.toggleFavorite.classList.toggle('active', photo.favorite);
-        
+
         // Salvar valores originais para cancelamento
         this.originalTitle = photo.title || '';
         this.originalTags = photo.tags.join(', ') || '';
-        
+
         // Aplicar rotação e resetar zoom
         this.lightboxImage.style.transform = `rotate(${this.rotation}deg)`;
         this.lightboxImage.classList.remove('zoomed');
         this.isZoomed = false;
-        
+
         // Atualizar navegação
         this.updateNavigationButtons();
-        
+
         // Atualizar modo de edição
         this.setEditMode(false);
     }
@@ -347,7 +407,7 @@ class LightboxManager {
 
     setEditMode(editing) {
         this.isEditing = editing;
-        
+
         if (editing) {
             this.lightboxTitle.setAttribute('contenteditable', 'true');
             this.lightboxTags.setAttribute('contenteditable', 'true');
@@ -365,20 +425,20 @@ class LightboxManager {
     saveEdits() {
         const photo = this.currentFilteredPhotos[this.currentIndex];
         if (!photo) return;
-        
+
         const newTitle = this.lightboxTitle.textContent.trim();
         const newTags = this.lightboxTags.textContent.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-        
+
         this.photoManager.updatePhoto(photo.id, {
             title: newTitle,
             tags: newTags
         });
-        
+
         UIHelper.showToast('Edições salvas com sucesso!', 'success');
         this.originalTitle = newTitle;
         this.originalTags = newTags.join(', ');
         this.setEditMode(false);
-        
+
         // Disparar evento para atualizar a galeria
         document.dispatchEvent(new CustomEvent('galleryUpdated'));
     }
@@ -392,13 +452,13 @@ class LightboxManager {
     toggleFavoriteCurrent() {
         const photo = this.currentFilteredPhotos[this.currentIndex];
         if (!photo) return;
-        
+
         const isFavorite = this.photoManager.toggleFavorite(photo.id);
         this.toggleFavorite.textContent = isFavorite ? '★' : '☆';
         this.toggleFavorite.classList.toggle('active', isFavorite);
-        
+
         UIHelper.showToast(isFavorite ? 'Adicionado aos favoritos' : 'Removido dos favoritos', 'success');
-        
+
         // Disparar evento para atualizar a galeria
         document.dispatchEvent(new CustomEvent('galleryUpdated'));
     }
@@ -406,14 +466,14 @@ class LightboxManager {
     downloadCurrent() {
         const photo = this.currentFilteredPhotos[this.currentIndex];
         if (!photo) return;
-        
+
         const a = document.createElement('a');
         a.href = photo.dataURL;
         a.download = photo.title ? `${photo.title}.${photo.name.split('.').pop()}` : photo.name;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
+
         UIHelper.showToast('Download iniciado!', 'success');
     }
 
@@ -424,11 +484,11 @@ class LightboxManager {
 
     zoomImage(e) {
         if (this.isZoomed) return;
-        
+
         const rect = this.lightboxImage.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        
+
         this.lightboxImage.style.transformOrigin = `${x}px ${y}px`;
         this.lightboxImage.classList.add('zoomed');
         this.isZoomed = true;
@@ -442,7 +502,7 @@ class LightboxManager {
     deleteCurrent() {
         const photo = this.currentFilteredPhotos[this.currentIndex];
         if (!photo) return;
-        
+
         UIHelper.showConfirm(
             'Excluir Foto',
             `Tem certeza que deseja excluir "${photo.title || photo.name}"? Esta ação não pode ser desfeita.`,
@@ -462,14 +522,14 @@ class LightboxManager {
     updateNavigationButtons() {
         const prevBtn = this.prevButton;
         const nextBtn = this.nextButton;
-        
+
         prevBtn.disabled = this.currentIndex === 0;
         nextBtn.disabled = this.currentIndex === this.currentFilteredPhotos.length - 1;
-        
+
         // Atualizar ARIA labels
-        prevBtn.setAttribute('aria-label', 
+        prevBtn.setAttribute('aria-label',
             this.currentIndex === 0 ? 'Primeira foto' : 'Foto anterior');
-        nextBtn.setAttribute('aria-label', 
+        nextBtn.setAttribute('aria-label',
             this.currentIndex === this.currentFilteredPhotos.length - 1 ? 'Última foto' : 'Próxima foto');
     }
 
@@ -478,7 +538,7 @@ class LightboxManager {
         hint.className = 'keyboard-hint';
         hint.textContent = '← → para navegar • F para favorito • ESC para sair';
         this.lightboxImageContainer.appendChild(hint);
-        
+
         setTimeout(() => {
             if (hint.parentNode) {
                 hint.parentNode.removeChild(hint);
@@ -492,8 +552,8 @@ class LightboxManager {
 
     handleKeydown(e) {
         if (!this.isOpen) return;
-        
-        switch(e.key) {
+
+        switch (e.key) {
             case 'ArrowLeft':
                 e.preventDefault();
                 this.navigate(-1);
@@ -584,20 +644,20 @@ class UploadManager {
     setupEventListeners() {
         // Abrir modal
         document.getElementById('upload-button').addEventListener('click', () => this.openModal());
-        
+
         // Fechar modal
         this.closeUploadModal.addEventListener('click', () => this.closeModal());
         this.cancelUpload.addEventListener('click', () => this.closeModal());
-        
+
         // Drag and drop
         this.setupDragAndDrop();
-        
+
         // Seleção de arquivos
         this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files));
-        
+
         // Envio do formulário
         this.uploadForm.addEventListener('submit', (e) => this.handleSubmit(e));
-        
+
         // Fechar ao clicar fora
         this.uploadModal.addEventListener('click', (e) => {
             if (e.target === this.uploadModal) this.closeModal();
@@ -665,17 +725,17 @@ class UploadManager {
     }
 
     handleFileSelect(files) {
-        const validFiles = Array.from(files).filter(file => 
+        const validFiles = Array.from(files).filter(file =>
             file.type.startsWith('image/') && file.size <= 10 * 1024 * 1024 // 10MB max
         );
-        
+
         if (validFiles.length === 0) {
             if (files.length > 0) {
                 UIHelper.showToast('Por favor, selecione apenas imagens válidas (máx. 10MB cada)', 'warning');
             }
             return;
         }
-        
+
         this.filesToUpload = validFiles;
         this.updatePreview();
         this.uploadSubmit.disabled = false;
@@ -684,7 +744,7 @@ class UploadManager {
     updatePreview() {
         this.previewContainer.innerHTML = '';
         this.fileCount.textContent = this.filesToUpload.length;
-        
+
         this.filesToUpload.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -695,7 +755,7 @@ class UploadManager {
                     <button class="remove-preview" data-index="${index}">×</button>
                 `;
                 this.previewContainer.appendChild(previewItem);
-                
+
                 // Adicionar evento para remover pré-visualização
                 previewItem.querySelector('.remove-preview').addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -704,7 +764,7 @@ class UploadManager {
             };
             reader.readAsDataURL(file);
         });
-        
+
         this.uploadPreview.style.display = 'block';
     }
 
@@ -719,31 +779,31 @@ class UploadManager {
 
     async handleSubmit(e) {
         e.preventDefault();
-        
+
         if (this.filesToUpload.length === 0) {
             UIHelper.showToast('Nenhuma imagem selecionada', 'warning');
             return;
         }
-        
+
         this.uploadSubmit.disabled = true;
         this.uploadSubmit.textContent = 'Processando...';
-        
+
         const title = document.getElementById('photo-title').value;
         const tags = document.getElementById('photo-tags').value.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
         const category = document.getElementById('photo-category').value;
         const compress = document.getElementById('compress-images').checked;
-        
+
         try {
             for (const file of this.filesToUpload) {
                 await this.processFile(file, title, tags, category, compress);
             }
-            
+
             UIHelper.showToast(`${this.filesToUpload.length} foto(s) adicionada(s) com sucesso!`, 'success');
             this.closeModal();
-            
+
             // Disparar evento para atualizar a galeria
             document.dispatchEvent(new CustomEvent('galleryUpdated'));
-            
+
         } catch (error) {
             console.error('Erro no upload:', error);
             UIHelper.showToast('Erro ao processar as imagens', 'error');
@@ -770,7 +830,7 @@ class UploadManager {
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             };
-            
+
             // Processar thumbnail
             const processThumbnail = (callback) => {
                 const reader = new FileReader();
@@ -782,7 +842,7 @@ class UploadManager {
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             };
-            
+
             // Obter metadados da imagem
             const getMetadata = (callback) => {
                 const img = new Image();
@@ -796,7 +856,7 @@ class UploadManager {
                 img.onerror = reject;
                 img.src = URL.createObjectURL(file);
             };
-            
+
             // Executar todos os processos em paralelo
             Promise.all([
                 new Promise(processMainImage),
@@ -815,7 +875,7 @@ class UploadManager {
                     category: category,
                     metadata: metadata
                 });
-                
+
                 resolve();
             }).catch(reject);
         });
@@ -827,10 +887,10 @@ class UploadManager {
             const canvas = document.createElement('canvas');
             canvas.width = img.width;
             canvas.height = img.height;
-            
+
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
-            
+
             callback(canvas.toDataURL('image/jpeg', quality));
         };
         img.src = dataURL;
@@ -842,7 +902,7 @@ class UploadManager {
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            
+
             // Calcular dimensões mantendo aspect ratio
             if (width > height) {
                 if (width > maxWidth) {
@@ -855,13 +915,13 @@ class UploadManager {
                     height = maxHeight;
                 }
             }
-            
+
             canvas.width = width;
             canvas.height = height;
-            
+
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
+
             callback(canvas.toDataURL('image/jpeg', 0.7));
         };
         img.src = dataURL;
@@ -889,7 +949,7 @@ class FilterManager {
         this.photoGrid = document.getElementById('photo-grid');
         this.galleryStatus = document.getElementById('gallery-status');
         this.loadMoreBtn = document.getElementById('load-more');
-        
+
         this.currentPage = 1;
         this.photosPerPage = 20;
     }
@@ -900,12 +960,12 @@ class FilterManager {
         this.sortSelect.addEventListener('change', () => this.handleSortChange());
         this.clearFilters.addEventListener('click', () => this.clearAllFilters());
         this.loadMoreBtn.addEventListener('click', () => this.loadMore());
-        
+
         // Categorias - AGORA COM FAVORITOS FUNCIONAL
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.handleCategoryChange(e.target.dataset.category));
         });
-        
+
         // Atualizar galeria quando fotos forem adicionadas/removidas
         document.addEventListener('galleryUpdated', () => {
             this.currentPage = 1;
@@ -936,12 +996,12 @@ class FilterManager {
 
     handleCategoryChange(category) {
         this.currentCategory = category;
-        
+
         // Atualizar botões de categoria
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.category === category);
         });
-        
+
         this.currentPage = 1;
         this.applyFilters();
     }
@@ -963,11 +1023,11 @@ class FilterManager {
         this.searchInput.value = '';
         this.clearSearch.style.display = 'none';
         this.currentCategory = 'all';
-        
+
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.category === 'all');
         });
-        
+
         this.currentPage = 1;
         this.applyFilters();
         this.generateTagFilters();
@@ -975,7 +1035,7 @@ class FilterManager {
 
     applyFilters() {
         let filtered = [...this.photoManager.photos];
-        
+
         // FILTRO POR CATEGORIA - AGORA FUNCIONAL PARA FAVORITOS
         if (this.currentCategory === 'recent') {
             const oneWeekAgo = new Date();
@@ -987,7 +1047,7 @@ class FilterManager {
         } else if (this.currentCategory && this.currentCategory !== 'all') {
             filtered = filtered.filter(photo => photo.category === this.currentCategory);
         }
-        
+
         // Filtro por busca
         if (this.searchTerm) {
             filtered = filtered.filter(photo =>
@@ -997,17 +1057,17 @@ class FilterManager {
                 (photo.category && photo.category.toLowerCase().includes(this.searchTerm))
             );
         }
-        
+
         // Filtro por tags
         if (this.activeTags.size > 0) {
             filtered = filtered.filter(photo =>
                 photo.tags && photo.tags.some(tag => this.activeTags.has(tag))
             );
         }
-        
+
         // Ordenação
         filtered.sort((a, b) => {
-            switch(this.sortBy) {
+            switch (this.sortBy) {
                 case 'uploadDate-desc':
                     return new Date(b.uploadDate) - new Date(a.uploadDate);
                 case 'uploadDate-asc':
@@ -1024,7 +1084,7 @@ class FilterManager {
                     return 0;
             }
         });
-        
+
         this.filteredPhotos = filtered;
         this.renderPhotos();
     }
@@ -1033,13 +1093,13 @@ class FilterManager {
         const startIndex = 0;
         const endIndex = this.currentPage * this.photosPerPage;
         const photosToShow = this.filteredPhotos.slice(startIndex, endIndex);
-        
+
         // Mostrar/Ocultar botão "Carregar Mais"
         this.loadMoreBtn.style.display = endIndex < this.filteredPhotos.length ? 'block' : 'none';
-        
+
         if (this.currentPage === 1) {
             this.photoGrid.innerHTML = '';
-            
+
             if (this.filteredPhotos.length === 0) {
                 this.photoGrid.innerHTML = `
                     <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
@@ -1049,29 +1109,30 @@ class FilterManager {
                         <button id="upload-from-empty" class="btn-primary" style="margin-top: 1rem;">Fazer Upload de Fotos</button>
                     </div>
                 `;
-                
+
                 document.getElementById('upload-from-empty')?.addEventListener('click', () => {
                     document.getElementById('upload-button').click();
                 });
-                
+
                 this.galleryStatus.textContent = 'Nenhuma foto corresponde aos filtros aplicados';
                 return;
             }
         }
-        
+
         photosToShow.forEach(photo => {
             const photoItem = this.createPhotoElement(photo);
             this.photoGrid.appendChild(photoItem);
         });
-        
+
         // Atualizar status
         const totalCount = this.filteredPhotos.length;
         const showingCount = photosToShow.length;
         this.galleryStatus.textContent = `Mostrando ${showingCount} de ${totalCount} fotos`;
-        
+
         this.generateTagFilters();
     }
 
+    // No FilterManager class, modifique o método createPhotoElement
     createPhotoElement(photo) {
         const photoItem = document.createElement('div');
         photoItem.className = 'photo-item';
@@ -1079,50 +1140,52 @@ class FilterManager {
         photoItem.setAttribute('tabindex', '0');
         photoItem.setAttribute('role', 'button');
         photoItem.setAttribute('aria-label', `Ver foto ${photo.title || photo.name}`);
-        
+
+        // Verificar se é uma URL local ou dataURL
+        const imageSrc = photo.thumbnailURL.startsWith('data:') ? photo.thumbnailURL : photo.thumbnailURL;
+
         photoItem.innerHTML = `
-            ${photo.favorite ? '<div class="favorite-indicator" title="Favorita">★</div>' : ''}
-            <img src="${photo.thumbnailURL}" alt="${photo.title || photo.name}" loading="lazy">
-            <div class="photo-info">
-                <div class="photo-title">${photo.title || photo.name}</div>
-                <div class="photo-meta">
-                    <span>${new Date(photo.uploadDate).toLocaleDateString('pt-BR')}</span>
-                    <span>${this.formatFileSize(photo.size)}</span>
-                </div>
+        ${photo.favorite ? '<div class="favorite-indicator" title="Favorita">★</div>' : ''}
+        <img src="${imageSrc}" alt="${photo.title || photo.name}" loading="lazy" 
+             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbSBuw6NvIGNhcnJlZ2FkYTwvdGV4dD48L3N2Zz4='">
+        <div class="photo-info">
+            <div class="photo-title">${photo.title || photo.name}</div>
+            <div class="photo-meta">
+                <span>${new Date(photo.uploadDate).toLocaleDateString('pt-BR')}</span>
+                <span>${this.formatFileSize(photo.size)}</span>
             </div>
-        `;
-        
+        </div>
+    `;
+
         photoItem.addEventListener('click', () => {
-            // Disparar evento personalizado para abrir lightbox
             document.dispatchEvent(new CustomEvent('openLightbox', {
                 detail: { photoId: photo.id, filteredPhotos: this.filteredPhotos }
             }));
         });
-        
-        // Duplo clique para favoritar
+
         photoItem.addEventListener('dblclick', () => {
             this.photoManager.toggleFavorite(photo.id);
             document.dispatchEvent(new CustomEvent('galleryUpdated'));
             UIHelper.showToast(photo.favorite ? 'Removido dos favoritos' : 'Adicionado aos favoritos', 'success');
         });
-        
+
         return photoItem;
     }
 
     generateTagFilters() {
         this.tagFiltersContainer.innerHTML = '';
-        
+
         const allTags = new Set();
         this.photoManager.photos.forEach(photo => {
             if (photo.tags) {
                 photo.tags.forEach(tag => allTags.add(tag));
             }
         });
-        
+
         if (allTags.size === 0) return;
-        
+
         const tagsArray = Array.from(allTags).sort();
-        
+
         tagsArray.forEach(tag => {
             const tagChip = document.createElement('span');
             tagChip.className = `tag-chip ${this.activeTags.has(tag) ? 'active' : ''}`;
@@ -1131,7 +1194,7 @@ class FilterManager {
             tagChip.setAttribute('role', 'button');
             tagChip.setAttribute('aria-pressed', this.activeTags.has(tag));
             tagChip.setAttribute('aria-label', `Filtrar por tag: ${tag}`);
-            
+
             tagChip.addEventListener('click', () => this.toggleTag(tag));
             tagChip.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -1139,7 +1202,7 @@ class FilterManager {
                     this.toggleTag(tag);
                 }
             });
-            
+
             this.tagFiltersContainer.appendChild(tagChip);
         });
     }
@@ -1164,7 +1227,7 @@ class UIHelper {
         const toast = document.getElementById('toast');
         toast.textContent = message;
         toast.className = `toast ${type} show`;
-        
+
         setTimeout(() => {
             toast.classList.remove('show');
         }, duration);
@@ -1176,48 +1239,48 @@ class UIHelper {
         const confirmMessage = document.getElementById('confirm-message');
         const confirmOk = document.getElementById('confirm-ok');
         const confirmCancel = document.getElementById('confirm-cancel');
-        
+
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
-        
+
         confirmModal.style.display = 'flex';
         confirmModal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');
-        
+
         const cleanup = () => {
             confirmModal.style.display = 'none';
             confirmModal.setAttribute('aria-hidden', 'true');
             document.body.classList.remove('modal-open');
-            
+
             confirmOk.removeEventListener('click', handleOk);
             confirmCancel.removeEventListener('click', handleCancel);
         };
-        
+
         const handleOk = () => {
             cleanup();
             onConfirm();
         };
-        
+
         const handleCancel = () => {
             cleanup();
             if (onCancel) onCancel();
         };
-        
+
         confirmOk.addEventListener('click', handleOk);
         confirmCancel.addEventListener('click', handleCancel);
-        
+
         // Fechar ao clicar fora ou pressionar ESC
         const handleOutsideClick = (e) => {
             if (e.target === confirmModal) handleCancel();
         };
-        
+
         const handleKeydown = (e) => {
             if (e.key === 'Escape') handleCancel();
         };
-        
+
         confirmModal.addEventListener('click', handleOutsideClick);
         document.addEventListener('keydown', handleKeydown);
-        
+
         // Limpar event listeners após fechar
         setTimeout(() => {
             confirmModal.removeEventListener('click', handleOutsideClick);
@@ -1250,7 +1313,7 @@ class ImportExportManager {
         document.body.appendChild(linkElement);
         linkElement.click();
         document.body.removeChild(linkElement);
-        
+
         UIHelper.showToast('Galeria exportada com sucesso!', 'success');
     }
 
@@ -1287,7 +1350,7 @@ class ImportExportManager {
             UIHelper.showToast('Erro ao ler o arquivo.', 'error');
         };
         reader.readAsText(file);
-        
+
         // Resetar o input para permitir importar o mesmo arquivo novamente
         event.target.value = '';
     }
@@ -1301,7 +1364,7 @@ class GalleryApp {
         this.uploadManager = new UploadManager(this.photoManager);
         this.filterManager = new FilterManager(this.photoManager);
         this.importExportManager = new ImportExportManager(this.photoManager);
-        
+
         this.setupGlobalEventListeners();
         this.initializeApp();
     }
@@ -1311,50 +1374,80 @@ class GalleryApp {
         document.addEventListener('openLightbox', (e) => {
             this.lightboxManager.open(e.detail.photoId, e.detail.filteredPhotos);
         });
-        
-        // Atualizar filtros quando a galeria for atualizada
+
         document.addEventListener('galleryUpdated', () => {
             this.filterManager.applyFilters();
         });
-        
+
         // Teclas de atalho globais
         document.addEventListener('keydown', (e) => {
-            // Ctrl+U para upload (quando não está em um campo de entrada)
             if (e.ctrlKey && e.key === 'u' && !this.isInputFocused()) {
                 e.preventDefault();
                 document.getElementById('upload-button').click();
             }
-            
-            // Ctrl+F para focar na busca
+
             if (e.ctrlKey && e.key === 'f' && !this.isInputFocused()) {
                 e.preventDefault();
                 document.getElementById('search-input').focus();
             }
+
+            // Atalho para adicionar fotos de exemplo (Ctrl+Shift+S)
+            if (e.ctrlKey && e.shiftKey && e.key === 'S' && !this.isInputFocused()) {
+                e.preventDefault();
+                this.addSamplePhotos();
+            }
         });
+    }
+
+    // Método para adicionar fotos de exemplo manualmente
+    addSamplePhotos() {
+        UIHelper.showConfirm(
+            'Adicionar Fotos de Exemplo',
+            'Deseja adicionar fotos de exemplo à galeria? Isso irá adicionar 5 fotos demonstrativas.',
+            () => {
+                this.photoManager.addSamplePhotos();
+                UIHelper.showToast('Fotos de exemplo adicionadas com sucesso!', 'success');
+                document.dispatchEvent(new CustomEvent('galleryUpdated'));
+            }
+        );
     }
 
     isInputFocused() {
         const activeElement = document.activeElement;
-        return activeElement.tagName === 'INPUT' || 
-               activeElement.tagName === 'TEXTAREA' ||
-               activeElement.isContentEditable;
+        return activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.isContentEditable;
     }
 
     initializeApp() {
-        // Aplicar filtros iniciais
         this.filterManager.applyFilters();
-        
-        // Mostrar mensagem de boas-vindas para usuários novos
+
+        // Mensagem de boas-vindas personalizada
         if (this.photoManager.photos.length === 0) {
             setTimeout(() => {
                 UIHelper.showToast(
-                    'Bem-vindo à sua galeria de fotos! Clique em "Upload" para adicionar suas primeiras fotos.', 
-                    'info', 
-                    5000
+                    'Bem-vindo à sua galeria de fotos! Use Ctrl+Shift+S para adicionar fotos de exemplo.',
+                    'info',
+                    6000
                 );
             }, 1000);
+        } else {
+            // Verificar se há fotos de exemplo
+            const hasSamplePhotos = this.photoManager.photos.some(photo =>
+                photo.dataURL && photo.dataURL.includes('img/samples/')
+            );
+
+            if (hasSamplePhotos) {
+                setTimeout(() => {
+                    UIHelper.showToast(
+                        'Galeria carregada com fotos de exemplo. Faça upload de suas próprias fotos!',
+                        'info',
+                        4000
+                    );
+                }, 1000);
+            }
         }
-        
+
         console.log('Galeria de Fotos inicializada com sucesso!');
     }
 }
