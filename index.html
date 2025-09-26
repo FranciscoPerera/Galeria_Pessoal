@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Galeria de fotos pessoal com recursos avançados de organização e edição">
+    <title>Galeria de Fotos</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="img/logo5.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Cabeçalho melhorado com navegação por teclado -->
+    <header role="banner">
+        <div class="header-content">
+            <h1>Minha Galeria</h1>
+            <div class="header-controls">
+                <button id="upload-button" class="btn-primary" aria-label="Abrir formulário de upload de fotos">
+                    <span class="icon">📤</span> Upload
+                </button>
+                <div class="import-export-group">
+                    <button id="export-button" class="btn-secondary" aria-label="Exportar galeria de fotos">
+                        <span class="icon">📥</span> Exportar
+                    </button>
+                    <button id="import-button" class="btn-secondary" aria-label="Importar galeria de fotos">
+                        <span class="icon">📂</span> Importar
+                    </button>
+                    <input type="file" id="import-input" accept="application/json" style="display: none;"
+                        aria-label="Selecionar arquivo para importar">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navegação por categorias -->
+    <nav class="categories-nav" role="navigation" aria-label="Categorias de fotos">
+        <div class="categories-container">
+            <button class="category-btn active" data-category="all">Todas</button>
+            <button class="category-btn" data-category="recent">Recentes</button>
+            <button class="category-btn" data-category="favorites">Favoritas</button>
+            <!-- Categorias dinâmicas serão adicionadas via JavaScript -->
+        </div>
+    </nav>
+
+    <!-- Seção principal da galeria -->
+    <main role="main">
+        <section id="controls" class="controls-section">
+            <div class="search-sort-container">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="Buscar por título, nome ou tags..."
+                        aria-label="Campo de busca">
+                    <button id="clear-search" class="clear-btn" aria-label="Limpar busca"
+                        style="display: none;">×</button>
+                </div>
+                <select id="sort-select" aria-label="Ordenar fotos por">
+                    <option value="uploadDate-desc">Mais Recentes</option>
+                    <option value="uploadDate-asc">Mais Antigos</option>
+                    <option value="title-asc">Título (A-Z)</option>
+                    <option value="title-desc">Título (Z-A)</option>
+                    <option value="size-desc">Maior Tamanho</option>
+                    <option value="size-asc">Menor Tamanho</option>
+                </select>
+            </div>
+            <div class="filters-container">
+                <div id="tag-filters" class="tag-filters"></div>
+                <button id="clear-filters" class="clear-filters-btn">Limpar Filtros</button>
+            </div>
+        </section>
+
+        <!-- Informações de status -->
+        <div id="gallery-status" class="gallery-status" role="status" aria-live="polite"></div>
+
+        <!-- Grid de fotos com skeleton loading -->
+        <section id="photo-grid" class="photo-grid" aria-label="Galeria de fotos">
+            <!-- Conteúdo carregado dinamicamente -->
+        </section>
+
+        <!-- Botão de carregar mais para galerias grandes -->
+        <div class="load-more-container">
+            <button id="load-more" class="load-more-btn" style="display: none;">Carregar Mais Fotos</button>
+        </div>
+    </main>
+
+    <!-- Lightbox/Modal para visualização de fotos -->
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightbox-title"
+        aria-hidden="true">
+        <div class="lightbox-content">
+            <div class="lightbox-image-container">
+                <img src="" alt="" id="lightbox-image" loading="eager">
+                <div class="image-nav">
+                    <button id="prev-button" class="nav-btn prev" aria-label="Foto anterior">‹</button>
+                    <button id="next-button" class="nav-btn next" aria-label="Próxima foto">›</button>
+                </div>
+                <div class="keyboard-hint" style="display: none;">
+                    ← → para navegar • F para favorito • ESC para sair
+                </div>
+            </div>
+
+            <div class="lightbox-info">
+                <!-- Cabeçalho com título e favorito -->
+                <div class="info-section">
+                    <div class="title-container">
+                        <h3 id="lightbox-title" contenteditable="false" aria-label="Título da foto"></h3>
+                        <span class="edit-badge" style="display: none;">Editando...</span>
+                    </div>
+                    <button id="toggle-favorite" class="favorite-btn" aria-label="Marcar como favorita">⭐</button>
+                </div>
+
+                <!-- Informações detalhadas -->
+                <div class="info-details">
+                    <p id="lightbox-filename"></p>
+                    <p id="lightbox-date"></p>
+                    <p id="lightbox-size"></p>
+                    <div class="tags-container">
+                        <label for="lightbox-tags">Tags:</label>
+                        <div id="lightbox-tags" contenteditable="false" aria-label="Tags da foto"></div>
+                    </div>
+                </div>
+
+                <!-- Controles de edição -->
+                <div class="edit-controls" style="display: none;">
+                    <button id="save-edit-button" class="btn-primary">💾 Salvar</button>
+                    <button id="cancel-edit-button" class="btn-secondary">❌ Cancelar</button>
+                </div>
+
+                <!-- Controles de ação -->
+                <div class="lightbox-controls">
+                    <button id="download-button" class="lightbox-control" aria-label="Baixar imagem">📥 Baixar</button>
+                    <button id="edit-button" class="lightbox-control" aria-label="Editar informações">✏️ Editar</button>
+                    <button id="rotate-button" class="lightbox-control" aria-label="Rotacionar imagem">🔄 Girar</button>
+                    <button id="delete-button" class="lightbox-control delete" aria-label="Apagar imagem">🗑️
+                        Apagar</button>
+                    <button id="close-lightbox" class="lightbox-control close" aria-label="Fechar visualização">✕
+                        Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de upload melhorado -->
+    <div id="upload-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title"
+        aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="upload-modal-title">Upload de Fotos</h2>
+                <button id="close-upload-modal" class="close-modal" aria-label="Fechar modal de upload">×</button>
+            </div>
+            <form id="upload-form" class="upload-form">
+                <div class="drop-area" id="drop-area" role="button" tabindex="0"
+                    aria-label="Área de arrastar e soltar imagens">
+                    <div class="drop-area-content">
+                        <div class="drop-icon">📁</div>
+                        <p>Arraste e solte imagens aqui ou clique para selecionar</p>
+                        <p class="drop-hint">Formatos suportados: JPG, PNG, WebP (Máx. 10MB por imagem)</p>
+                    </div>
+                    <input type="file" id="file-input" multiple accept="image/jpeg, image/png, image/webp"
+                        aria-label="Selecionar arquivos de imagem">
+                </div>
+
+                <div class="upload-options">
+                    <div class="form-group">
+                        <label for="photo-title">Título (opcional):</label>
+                        <input type="text" id="photo-title" placeholder="Título para todas as fotos">
+                    </div>
+                    <div class="form-group">
+                        <label for="photo-tags">Tags (separadas por vírgula):</label>
+                        <input type="text" id="photo-tags" placeholder="ex: férias, família, natureza">
+                    </div>
+                    <div class="form-group">
+                        <label for="photo-category">Categoria:</label>
+                        <select id="photo-category">
+                            <option value="">Sem categoria</option>
+                            <!-- Categorias serão preenchidas dinamicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="compress-images" checked>
+                        <label for="compress-images">Comprimir imagens para economizar espaço</label>
+                    </div>
+                </div>
+
+                <div id="upload-preview" class="upload-preview" style="display: none;">
+                    <h3>Pré-visualização (<span id="file-count">0</span> arquivos)</h3>
+                    <div id="preview-container" class="preview-container"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="upload-submit" class="btn-primary" disabled>Processar Fotos</button>
+                    <button type="button" id="cancel-upload" class="btn-secondary">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de confirmação -->
+    <div id="confirm-modal" class="modal confirm-modal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3 id="confirm-title">Confirmação</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">Tem certeza que deseja realizar esta ação?</p>
+            </div>
+            <div class="modal-actions">
+                <button id="confirm-ok" class="btn-primary">Confirmar</button>
+                <button id="confirm-cancel" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificação toast -->
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="script.js" type="module"></script>
+</body>
+
+</html>
